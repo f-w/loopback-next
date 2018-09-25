@@ -333,9 +333,6 @@ function verifyValidationRejectsInputWithError(
 ) {
   try {
     validateRequestBody(body, spec, schemas);
-    throw new Error(
-      "expected Function { name: 'validateRequestBody' } to throw exception",
-    );
   } catch (err) {
     expect(err.message).to.equal(expectedMessage);
     expect(err.code).to.equal(expectedCode);

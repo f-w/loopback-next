@@ -47,11 +47,18 @@ export function validateRequestBody(
   }
 
   const schema = getRequestBodySchema(requestBodySpec);
+  const schemaRef = getSchemaRef(requestBodySpec);
   debug('Request body schema: %j', util.inspect(schema, {depth: null}));
   if (!schema) return;
 
   const jsonSchema = convertToJsonSchema(schema);
-  validateValueAgainstJsonSchema(body, jsonSchema, globalSchemas);
+  validateValueAgainstJsonSchema(schemaRef, body, jsonSchema, globalSchemas);
+}
+
+function getSchemaRef(requestBodySpec: RequestBodyObject): string {
+  const content = requestBodySpec.content;
+  const schema = content[Object.keys(content)[0]].schema as SchemaObject;
+  return schema[Object.keys(schema)[0]];
 }
 
 /**
@@ -87,10 +94,16 @@ function convertToJsonSchema(openapiSchema: SchemaObject) {
  * @param schema The JSON schema used to perform the validation.
  * @param globalSchemas Schema references.
  */
+export interface AnyObject {
+  // tslint:disable-next-line:no-any
+  [property: string]: any;
+}
+let validateSchema: AnyObject = {}; // temporary location
 function validateValueAgainstJsonSchema(
+  schemaRef: string,
   // tslint:disable-next-line:no-any
   body: any,
-  jsonSchema: object,
+  jsonSchema: SchemaObject,
   globalSchemas?: SchemasObject,
 ) {
   const schemaWithRef = Object.assign({components: {}}, jsonSchema);
@@ -102,22 +115,22 @@ function validateValueAgainstJsonSchema(
     allErrors: true,
   });
 
-  try {
-    if (ajv.validate(schemaWithRef, body)) {
-      debug('Request body passed AJV validation.');
-      return;
-    }
-  } catch (err) {
-    debug('Fails to execute AJV validation:', err);
-    // TODO: [rfeng] Do we want to introduce a flag to disable validation
-    // or sink validation errors?
-    throw err;
+  if (!(schemaRef in validateSchema)) {
+    validateSchema[schemaRef] = ajv.compile(schemaWithRef);
   }
 
-  debug('Invalid request body: %s', util.inspect(ajv.errors));
+  const validate = validateSchema[schemaRef];
+  if (validate(body)) {
+    debug('Request body passed AJV validation.');
+    return;
+  }
+
+  const validationErrors = validate.errors;
+
+  debug('Invalid request body: %s', util.inspect(validationErrors));
 
   const error = RestHttpErrors.invalidRequestBody();
-  error.details = _.map(ajv.errors, e => {
+  error.details = _.map(validationErrors, e => {
     return {
       path: e.dataPath,
       code: e.keyword,
