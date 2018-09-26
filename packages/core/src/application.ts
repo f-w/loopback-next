@@ -192,6 +192,10 @@ export class Application extends Context {
     const instance = this.getSync<Component>(componentKey);
     mountComponent(this, instance);
   }
+
+  public packageJson(pkg: PackageJson) {
+    this.bind(CoreBindings.APPLICATION_PACKAGE_JSON).to(pkg);
+  }
 }
 
 /**
@@ -207,3 +211,14 @@ export interface ApplicationConfig {
 
 // tslint:disable-next-line:no-any
 export type ControllerClass = Constructor<any>;
+
+/**
+ * Type description for `package.json`
+ */
+export interface PackageJson {
+  name: string;
+  version: string;
+  description: string;
+  // tslint:disable-next-line:no-any
+  [name: string]: any;
+}

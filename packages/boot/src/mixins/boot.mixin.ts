@@ -8,6 +8,8 @@ import {Booter, BootOptions, Bootable} from '../interfaces';
 import {BootComponent} from '../boot.component';
 import {Bootstrapper} from '../bootstrapper';
 import {BootBindings} from '../keys';
+import {CoreBindings} from '@loopback/core';
+import * as path from 'path';
 
 // Binding is re-exported as Binding / Booter types are needed when consuming
 // BootMixin and this allows a user to import them from the same package (UX!)
@@ -53,6 +55,11 @@ export function BootMixin<T extends Constructor<any>>(superClass: T) {
       this.bind(BootBindings.BOOT_OPTIONS).toDynamicValue(
         () => this.bootOptions,
       );
+
+      this.bind(CoreBindings.APPLICATION_PACKAGE_JSON).toDynamicValue(() => {
+        const pkgFile = path.resolve(this.projectRoot, 'package.json');
+        return require(pkgFile);
+      });
     }
 
     /**

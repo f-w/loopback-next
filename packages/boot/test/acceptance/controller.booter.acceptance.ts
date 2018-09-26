@@ -7,9 +7,11 @@ import {
   createRestAppClient,
   givenHttpServerConfig,
   TestSandbox,
+  expect,
 } from '@loopback/testlab';
 import {resolve} from 'path';
 import {BooterApp} from '../fixtures/application';
+import {CoreBindings} from '@loopback/core';
 
 describe('controller booter acceptance tests', () => {
   let app: BooterApp;
@@ -20,6 +22,15 @@ describe('controller booter acceptance tests', () => {
   beforeEach(getApp);
 
   afterEach(stopApp);
+
+  it('binds package.json', async () => {
+    const pkg = await app.get(CoreBindings.APPLICATION_PACKAGE_JSON);
+    expect(pkg).containEql({
+      name: 'boot-test-app',
+      version: '1.0.0',
+      description: 'boot-test-app',
+    });
+  });
 
   it('binds controllers using ControllerDefaults and REST endpoints work', async () => {
     await app.boot();
@@ -33,6 +44,7 @@ describe('controller booter acceptance tests', () => {
   });
 
   async function getApp() {
+    await sandbox.copyFile(resolve(__dirname, '../fixtures/package.json'));
     await sandbox.copyFile(resolve(__dirname, '../fixtures/application.js'));
     await sandbox.copyFile(
       resolve(__dirname, '../fixtures/multiple.artifact.js'),
