@@ -700,6 +700,48 @@ describe('Routing', () => {
         .get('/')
         .expect(200, 'hello');
     });
+
+    it('sorts routes based on their specifics', async () => {
+      const app = new RestApplication();
+
+      class MyController {
+        greet(name: string) {
+          return `hello ${name}`;
+        }
+
+        greetWorld() {
+          return `hello WORLD`;
+        }
+      }
+
+      const spec = anOpenApiSpec()
+        .withOperation(
+          'get',
+          '/greet/{name}',
+          anOperationSpec()
+            .withParameter({name: 'name', in: 'path', type: 'string'})
+            .withExtension('x-operation-name', 'greet')
+            .withExtension('x-controller-name', 'MyController'),
+        )
+        .withOperation(
+          'get',
+          '/greet/world',
+          anOperationSpec()
+            .withExtension('x-operation-name', 'greetWorld')
+            .withExtension('x-controller-name', 'MyController'),
+        )
+        .build();
+
+      app.api(spec);
+      app.controller(MyController);
+
+      await whenIMakeRequestTo(app)
+        .get('/greet/john')
+        .expect(200, 'hello john');
+      await whenIMakeRequestTo(app)
+        .get('/greet/world')
+        .expect(200, 'hello WORLD');
+    });
   });
 
   /* ===== HELPERS ===== */
