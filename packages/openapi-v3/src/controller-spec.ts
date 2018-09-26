@@ -16,6 +16,7 @@ import {getJsonSchema} from '@loopback/repository-json-schema';
 import {OAI3Keys} from './keys';
 import {jsonToSchemaObject} from './json-to-schema';
 import * as _ from 'lodash';
+import * as pathToRegExp from 'path-to-regexp';
 import {resolveSchema} from './generate-schema';
 
 const debug = require('debug')('loopback:openapi3:metadata:controller-spec');
@@ -80,7 +81,7 @@ function resolveControllerSpec(constructor: Function): ControllerSpec {
 
     const endpoint = endpoints[op];
     const verb = endpoint.verb!;
-    const path = endpoint.path!;
+    const path = toOpenApiPath(endpoint.path!);
 
     let endpointName = '';
     /* istanbul ignore if */
@@ -274,4 +275,32 @@ export function getControllerSpec(constructor: Function): ControllerSpec {
     );
   }
   return spec;
+}
+
+function validatePath(path: string = '') {
+  path = path.replace(/{([^}]*)}(\/|$)/g, ':$1$2');
+  const tokens = pathToRegExp.parse(path);
+  for (const token of tokens) {
+    if (typeof token === 'string') continue;
+    if (typeof token.name === 'number') {
+      // Such as /(.*)
+      throw new Error('Unnamed parameter is not allowed in path ' + path);
+    }
+    if (token.optional || token.repeat || token.pattern !== '[^\\/]+?') {
+      // Such as /:foo*, /:foo+, /:foo?, or /:foo(\\d+)
+      throw new Error('Parameter modifier is not allowed in path ' + path);
+    }
+  }
+  return path;
+}
+
+/**
+ * Validate and normalize the path to OpenAPI path template. No parameter
+ * modifier, custom pattern, or unnamed parameter is allowed.
+ *
+ * @param path Express style path (https://github.com/pillarjs/path-to-regexp)
+ */
+export function toOpenApiPath(path: string = '') {
+  validatePath(path);
+  return path.replace(/\:([A-Za-z0-9_]+)/g, '{$1}');
 }
