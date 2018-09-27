@@ -41,7 +41,7 @@
     "@loopback/openapi-v3": "^0.15.0",
     "@loopback/rest": "^0.25.0",
     "@loopback/testlab": "^0.14.0",
-    "@types/node": "^10.1.1"
+    "@types/node": "~10.10.0"
   },
   "files": [
     "README.md",
